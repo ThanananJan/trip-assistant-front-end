@@ -1,0 +1,87 @@
+<template>
+  <VaLayout
+    :top="{ fixed: true, order: 2 }"
+    :right="{ fixed: true, absolute: breakpoints.mdDown, order: 1, overlay: breakpoints.mdDown && !isSidebarMinimized }"
+    @leftOverlayClick="isSidebarMinimized = true"
+  >
+    <template #top>
+      <AppNavbar :is-mobile="isMobile" />
+    </template>
+
+    <template #right>
+      <AppSidebar :minimized="isSidebarMinimized" :animated="!isMobile" :mobile="isMobile" />
+    </template>
+
+    <template #content>
+      <div :class="{ minimized: isSidebarMinimized }" class="app-layout__sidebar-wrapper">
+        <div v-if="isFullScreenSidebar" class="flex justify-end">
+          <VaButton class="px-4 py-4 mx-2" icon="md_close" preset="plain" @click="onCloseSidebarButtonClick" />
+        </div>
+      </div>
+      <main class="p-4 mb-4 max-w-3xl mx-auto xl:max-w-none xl:ml-0 xl:mr-[15.5rem] xl:pr-16">
+        <article>
+          <RouterView />
+        </article>
+      </main>
+    </template>
+  </VaLayout>
+</template>
+
+<script setup>
+import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { onBeforeRouteUpdate } from 'vue-router'
+import { useBreakpoint } from 'vuestic-ui'
+import { useGlobalStore } from '../stores/global-store'
+import AppNavbar from '../components/navbar/AppNavbar.vue'
+import AppSidebar from '../components/sidebar/AppSidebar.vue'
+
+const GlobalStore = useGlobalStore()
+
+const breakpoints = useBreakpoint()
+
+const sidebarWidth = ref('16rem')
+const sidebarMinimizedWidth = ref(undefined)
+
+const isMobile = ref(false)
+const isTablet = ref(false)
+const { isSidebarMinimized } = storeToRefs(GlobalStore)
+
+const onResize = () => {
+  isSidebarMinimized.value = true
+  isMobile.value = breakpoints.smDown
+  isTablet.value = breakpoints.mdDown
+  sidebarMinimizedWidth.value = isMobile.value ? '0' : '4.5rem'
+  sidebarWidth.value = isTablet.value ? '100%' : '16rem'
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  onResize()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+})
+
+onBeforeRouteUpdate(() => {
+  if (breakpoints.mdDown) {
+    // Collapse sidebar after route change for Mobile
+    isSidebarMinimized.value = true
+  }
+})
+
+const isFullScreenSidebar = computed(() => isTablet.value && !isSidebarMinimized.value)
+
+const onCloseSidebarButtonClick = () => {
+  isSidebarMinimized.value = true
+}
+</script>
+
+<style lang="scss" scoped>
+// Prevent icon jump on animation
+.va-sidebar {
+  width: unset !important;
+  min-width: unset !important;
+}
+</style>
